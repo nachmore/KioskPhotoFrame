@@ -114,7 +114,7 @@ namespace SelectiveOneDriveSync
       }
     }
 
-    private async Task<StorageFolder> GetCacheFolder()
+    public async Task<StorageFolder> GetCacheFolder()
     {
       var localCacheFolder = ApplicationData.Current.LocalCacheFolder;
 
