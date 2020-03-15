@@ -14,7 +14,7 @@ namespace SelectiveOneDriveSync
   static class MSALHelper
   {
     private /*const*/ static string CLIENT_ID;
-    private static readonly string[] SCOPES = { "user.read" };
+    private static readonly string[] SCOPES = { "user.read", "files.read.all" };
 
     private static IPublicClientApplication _publicClientApp;
     private static string _accessToken;
@@ -41,8 +41,8 @@ namespace SelectiveOneDriveSync
       AuthenticationResult authResult = null;
 
       // It's good practice to not do work on the UI thread, so use ConfigureAwait(false) whenever possible.            
-      IEnumerable<IAccount> accounts = await _publicClientApp.GetAccountsAsync().ConfigureAwait(false);
-      IAccount firstAccount = accounts.FirstOrDefault();
+      var accounts = await _publicClientApp.GetAccountsAsync().ConfigureAwait(false);
+      var firstAccount = accounts.FirstOrDefault();
 
       try
       {
@@ -74,6 +74,21 @@ namespace SelectiveOneDriveSync
       Debug.WriteLine($"Access Token set to: {_accessToken}");
 
       return _accessToken;
+    }
+
+    public static async Task SignOut()
+    {
+      var accounts = await _publicClientApp.GetAccountsAsync().ConfigureAwait(false);
+      var firstAccount = accounts.FirstOrDefault();
+
+      try
+      {
+        await _publicClientApp.RemoveAsync(firstAccount).ConfigureAwait(false);
+      } 
+      catch (Exception e)
+      {
+        Debug.WriteLine($"Failed to log out user!\n${e}");
+      }
     }
   }
 }
