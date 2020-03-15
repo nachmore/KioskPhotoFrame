@@ -16,7 +16,7 @@ namespace SelectiveOneDriveSync
   public class SelectiveOneDriveClient
   {
     private const int DEFAULT_SYNC_INTERVAL = 60;
-    private const string DEFAULT_SYNC_FILENAME = "selective_sync.list";
+    private const string DEFAULT_SYNC_FILENAME = "selective_sync.list.txt";
     private const string DEFAULT_SYNC_FOLDERNAME = "photo_kiosk_cache";
 
     /// <summary>
@@ -40,6 +40,7 @@ namespace SelectiveOneDriveSync
         new DelegateAuthenticationProvider(
                             async (requestMessage) =>
                             {
+                              //await MSALHelper.SignOut();
                               var token = await MSALHelper.AcquireToken();
                               requestMessage.Headers.Authorization = new AuthenticationHeaderValue("bearer", token);
                             }));
@@ -60,16 +61,22 @@ namespace SelectiveOneDriveSync
         // retrieve the file list
         var filesToSync = await ReadAllText(FileList);
 
-        var files = filesToSync.Split('\n');
+        var splitLinesRe = new Regex(@"\r\n|\n|\r");
+
+        var files = splitLinesRe.Split(filesToSync);
 
         // first line serves as the drive ID and driveItem ID
-        var re = new Regex(@"drive: (\S+) id: ([\S!]+)");
+        var re = new Regex(@"drive:\s*?(\S+) id:\s*?([\S!]+)");
         var matches = re.Matches(files[0]);
         var driveId = matches[0].Groups[1].Value;
         var driveItemId = matches[0].Groups[2].Value;
 
         foreach (var file in files.Skip(1))
         {
+
+          if (string.IsNullOrWhiteSpace(file))
+            continue;
+
           // will stomp on files with the same name in different directories. For now, "oh well"
           Debug.WriteLine($"Syncing {file}");
           await SyncFile(driveId, driveItemId, file);
