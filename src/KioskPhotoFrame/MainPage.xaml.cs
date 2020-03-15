@@ -26,7 +26,8 @@ namespace KioskPhotoFrame
     {
       this.InitializeComponent();
 
-      MSALHelper.AcquireToken();
+      var s = new SelectiveOneDriveSync.SelectiveOneDriveClient();
+      s.StartSync();
     }
   }
 }

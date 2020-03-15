@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace KioskPhotoFrame
+namespace SelectiveOneDriveSync
 {
   // Helper library for access to to the MS Authentication Library
   // based on: https://docs.microsoft.com/en-us/azure/active-directory/develop/tutorial-v2-windows-uwp
@@ -36,8 +36,8 @@ namespace KioskPhotoFrame
                           .Build();
     }
 
-    public static async void AcquireToken()
-    {
+    public static async Task<string> AcquireToken()
+    { 
       AuthenticationResult authResult = null;
 
       // It's good practice to not do work on the UI thread, so use ConfigureAwait(false) whenever possible.            
@@ -71,8 +71,9 @@ namespace KioskPhotoFrame
       }
 
       _accessToken = authResult.AccessToken;
-
       Debug.WriteLine($"Access Token set to: {_accessToken}");
+
+      return _accessToken;
     }
   }
 }
