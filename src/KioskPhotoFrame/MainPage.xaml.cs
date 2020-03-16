@@ -29,7 +29,7 @@ namespace KioskPhotoFrame
   {
     public event PropertyChangedEventHandler PropertyChanged = delegate { };
 
-    private const int SLIDESHOW_NEXT_SECONDS = 30;
+    private const int SLIDESHOW_NEXT_SECONDS = 15;
 
     private BitmapImage _slideShowSource;
     public BitmapImage SlideShowSource
@@ -53,6 +53,8 @@ namespace KioskPhotoFrame
       {
         var cache = await s.GetCacheFolder();
         var random = new Random();
+        var lastRandom = 0;
+        var nextRandom = 0;
 
         while (true)
         {
@@ -61,7 +63,14 @@ namespace KioskPhotoFrame
 
           await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, async () =>
           {
-            using (var stream = (FileRandomAccessStream)await files[random.Next(0, files.Count)].OpenAsync(Windows.Storage.FileAccessMode.Read))
+            do
+            {
+              nextRandom = random.Next(files.Count);
+            } while (nextRandom == lastRandom);
+
+            lastRandom = nextRandom;
+            
+            using (var stream = (FileRandomAccessStream)await files[nextRandom].OpenAsync(Windows.Storage.FileAccessMode.Read))
             {
               var bitmapImage = new BitmapImage();
               bitmapImage.SetSource(stream);

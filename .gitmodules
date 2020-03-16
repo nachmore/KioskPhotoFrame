@@ -1,0 +1,3 @@
+[submodule "ImageTransitionAnimationsUWP"]
+	path = ImageTransitionAnimationsUWP
+	url = https://github.com/nachmore/ImageTransitionAnimationsUWP.git
