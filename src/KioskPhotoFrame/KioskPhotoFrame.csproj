@@ -158,6 +158,10 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\ImageTransitionAnimationsUWP\ImageTransitionAnimationsUWP\ImageTransitionAnimationsUWP.csproj">
+      <Project>{80fc899c-a19d-4004-b661-9fbac5db0f75}</Project>
+      <Name>ImageTransitionAnimationsUWP</Name>
+    </ProjectReference>
     <ProjectReference Include="..\SelectiveOneDriveSync\SelectiveOneDriveSync.csproj">
       <Project>{18b7a44d-47bc-4e6f-89e2-f76a021abad8}</Project>
       <Name>SelectiveOneDriveSync</Name>
