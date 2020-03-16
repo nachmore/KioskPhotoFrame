@@ -48,6 +48,9 @@ namespace SelectiveOneDriveSync
 
     public void StartSync()
     {
+
+      _ = MSALHelper.AcquireToken();
+            
       Task.Run(OneDriveSyncTask);
     }
 

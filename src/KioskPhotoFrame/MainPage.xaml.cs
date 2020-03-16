@@ -1,23 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
 using Windows.Storage.Streams;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
-using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
-using Windows.UI.Xaml.Navigation;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -47,9 +36,15 @@ namespace KioskPhotoFrame
     {
       this.InitializeComponent();
 
+      this.Loaded += MainPage_Loaded;
+    }
+
+    private void MainPage_Loaded(object sender, RoutedEventArgs e)
+    {
+
       var s = new SelectiveOneDriveSync.SelectiveOneDriveClient();
       s.StartSync();
-
+     
       Task.Run(async () =>
       {
         var cache = await s.GetCacheFolder();
@@ -62,7 +57,7 @@ namespace KioskPhotoFrame
 
           var files = await cache.GetFilesAsync();
 
-          await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, async () =>
+          if (files.Count > 0)
           {
             do
             {
@@ -70,21 +65,23 @@ namespace KioskPhotoFrame
             } while (nextRandom == lastRandom);
 
             lastRandom = nextRandom;
-            
-            using (var stream = (FileRandomAccessStream)await files[nextRandom].OpenAsync(Windows.Storage.FileAccessMode.Read))
-            {
-              var bitmapImage = new BitmapImage();
-              bitmapImage.SetSource(stream);
-              SlideShowSource = bitmapImage;
-            }
-          });
 
-          await Task.Delay(SLIDESHOW_NEXT_SECONDS * 1000);
+            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, async () =>
+            {
+              using (var stream = (FileRandomAccessStream)await files[nextRandom].OpenAsync(Windows.Storage.FileAccessMode.Read))
+              {
+                var bitmapImage = new BitmapImage();
+                bitmapImage.SetSource(stream);
+                SlideShowSource = bitmapImage;
+              }
+            });
+          }
+          await Task.Delay(SLIDESHOW_NEXT_SECONDS * 1000).ConfigureAwait(false);
         }
       });
 
       DataContext = this;
-
+      
       ApplicationView.GetForCurrentView().TryEnterFullScreenMode();
     }
 

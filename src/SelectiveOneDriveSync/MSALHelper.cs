@@ -56,7 +56,7 @@ namespace SelectiveOneDriveSync
 
         try
         {
-          authResult = await _publicClientApp.AcquireTokenInteractive(SCOPES).ExecuteAsync().ConfigureAwait(false);
+          authResult = await _publicClientApp.AcquireTokenInteractive(SCOPES).ExecuteAsync();
         }
         catch (MsalException msalex)
         {
