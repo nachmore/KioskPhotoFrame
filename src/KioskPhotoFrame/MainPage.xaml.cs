@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Storage.Streams;
+using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -84,7 +85,7 @@ namespace KioskPhotoFrame
 
       DataContext = this;
 
-
+      ApplicationView.GetForCurrentView().TryEnterFullScreenMode();
     }
 
     public void OnPropertyChanged([CallerMemberName] string propertyName = null)
