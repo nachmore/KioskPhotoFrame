@@ -8,6 +8,7 @@ using Windows.Storage.Streams;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
@@ -32,16 +33,38 @@ namespace KioskPhotoFrame
       }
     }
 
+    public Stretch HorizontalImageStretch
+    {
+      get { return KioskConfig.HorizontalImageStretch; }
+      set
+      {
+        OnPropertyChanged();
+      }
+    }
+
+    public Stretch VerticalImageStretch
+    {
+      get { return KioskConfig.VerticalImageStretch; }
+      set
+      {
+        OnPropertyChanged();
+      }
+    }
+
     public MainPage()
     {
       this.InitializeComponent();
+
+      DataContext = this;
 
       this.Loaded += MainPage_Loaded;
     }
 
     private void MainPage_Loaded(object sender, RoutedEventArgs e)
     {
-
+      HorizontalImageStretch = KioskConfig.HorizontalImageStretch;
+      VerticalImageStretch = KioskConfig.VerticalImageStretch;
+      
       var s = new SelectiveOneDriveSync.SelectiveOneDriveClient();
       s.StartSync();
      
@@ -90,12 +113,12 @@ namespace KioskPhotoFrame
           await Task.Delay(KioskConfig.SlideDurationSeconds * 1000).ConfigureAwait(false);
         }
       });
-
-      DataContext = this;
       
       ApplicationView.GetForCurrentView().TryEnterFullScreenMode();
 
+#if !DEBUG
       Window.Current.CoreWindow.PointerCursor = null;
+#endif
     }
 
     public void OnPropertyChanged([CallerMemberName] string propertyName = null)

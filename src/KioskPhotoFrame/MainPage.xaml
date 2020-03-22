@@ -9,5 +9,5 @@
     mc:Ignorable="d"
     Background="Black">
 
-  <imgex:ImageEx Source="{Binding SlideShowSource}" x:Name="temp"></imgex:ImageEx>
+  <imgex:ImageEx x:Name="temp" Source="{Binding SlideShowSource}" VerticalImageStretch="{Binding VerticalImageStretch}" HorizontalImageStretch="{Binding HorizontalImageStretch}" ></imgex:ImageEx>
 </Page>
