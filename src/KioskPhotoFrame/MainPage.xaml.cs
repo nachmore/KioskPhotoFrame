@@ -83,6 +83,8 @@ namespace KioskPhotoFrame
       DataContext = this;
       
       ApplicationView.GetForCurrentView().TryEnterFullScreenMode();
+
+      Window.Current.CoreWindow.PointerCursor = null;
     }
 
     public void OnPropertyChanged([CallerMemberName] string propertyName = null)
