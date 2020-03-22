@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Windows.Storage;
 using Windows.Storage.Streams;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
@@ -18,8 +20,6 @@ namespace KioskPhotoFrame
   public sealed partial class MainPage : Page, INotifyPropertyChanged
   {
     public event PropertyChangedEventHandler PropertyChanged = delegate { };
-
-    private const int SLIDESHOW_NEXT_SECONDS = 15;
 
     private BitmapImage _slideShowSource;
     public BitmapImage SlideShowSource
@@ -52,10 +52,20 @@ namespace KioskPhotoFrame
         var lastRandom = 0;
         var nextRandom = 0;
 
+        var lastFileRefresh = DateTime.MinValue;
+        IReadOnlyList<StorageFile> files = null;
+
         while (true)
         {
 
-          var files = await cache.GetFilesAsync();
+          // No point in thrashing the disk refreshing thousands of files every time we switch 
+          // though only do this if there is a decent number of photos
+          if (files?.Count < KioskConfig.MinRefreshCount || DateTime.Now.Subtract(lastFileRefresh).TotalMinutes > KioskConfig.FileListRefreshMinutes)
+          {
+            files = await cache.GetFilesAsync();
+
+            lastFileRefresh = DateTime.Now;
+          }
 
           if (files.Count > 0)
           {
@@ -76,7 +86,8 @@ namespace KioskPhotoFrame
               }
             });
           }
-          await Task.Delay(SLIDESHOW_NEXT_SECONDS * 1000).ConfigureAwait(false);
+
+          await Task.Delay(KioskConfig.SlideDurationSeconds * 1000).ConfigureAwait(false);
         }
       });
 
