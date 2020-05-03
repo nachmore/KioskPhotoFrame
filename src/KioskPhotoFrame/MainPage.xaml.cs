@@ -72,7 +72,7 @@ namespace KioskPhotoFrame
       {
         var cache = await s.GetCacheFolder();
         var random = new Random();
-        var lastRandom = 0;
+        var lastRandom = -1;
         var nextRandom = 0;
 
         var lastFileRefresh = DateTime.MinValue;
@@ -80,17 +80,7 @@ namespace KioskPhotoFrame
 
         while (true)
         {
-
-          // No point in thrashing the disk refreshing thousands of files every time we switch 
-          // though only do this if there is a decent number of photos
-          if (files?.Count < KioskConfig.MinRefreshCount || DateTime.Now.Subtract(lastFileRefresh).TotalMinutes > KioskConfig.FileListRefreshMinutes)
-          {
-            files = await cache.GetFilesAsync();
-
-            lastFileRefresh = DateTime.Now;
-          }
-
-          if (files.Count > 0)
+          if (files?.Count > 0)
           {
             do
             {
@@ -109,8 +99,28 @@ namespace KioskPhotoFrame
               }
             });
           }
+          
+          // we refresh the image list after the image so that this effectively runs in the background
+          // instead of delaying the transition of the next image
 
-          await Task.Delay(KioskConfig.SlideDurationSeconds * 1000).ConfigureAwait(false);
+          var start = DateTime.Now;
+
+          // No point in thrashing the disk refreshing thousands of files every time we switch 
+          // though only do this if there is a decent number of photos
+          if (files?.Count < KioskConfig.MinRefreshCount || DateTime.Now.Subtract(lastFileRefresh).TotalMinutes > KioskConfig.FileListRefreshMinutes)
+          {
+            files = await cache.GetFilesAsync();
+
+            lastFileRefresh = DateTime.Now;
+            System.Diagnostics.Debug.WriteLine(lastFileRefresh.Subtract(start).TotalMilliseconds);
+          }
+
+          // lastRandom will be -1 on startup
+          if (lastRandom >= 0)
+          {
+            var elapsed = (int)(DateTime.Now.Subtract(start).TotalMilliseconds);
+            await Task.Delay(KioskConfig.SlideDurationSeconds * 1000 - elapsed).ConfigureAwait(false);
+          }
         }
       });
       
