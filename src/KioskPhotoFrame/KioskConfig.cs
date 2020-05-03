@@ -13,7 +13,12 @@ namespace KioskPhotoFrame
     /// <summary>
     /// Duration of each slide, in seconds
     /// </summary>
+#if DEBUG
+    public static int SlideDurationSeconds { get; set; } = 5;
+#else
     public static int SlideDurationSeconds { get; set; } = 15;
+
+#endif
 
     public static int FileListRefreshMinutes { get; set; } = 15;
 
