@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Windows.Storage;
+using Windows.Storage.FileProperties;
 using Windows.Storage.Streams;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
@@ -77,20 +79,21 @@ namespace KioskPhotoFrame
 
         var lastFileRefresh = DateTime.MinValue;
         IReadOnlyList<StorageFile> files = null;
+        BasicProperties fileProperties = null;
 
         while (true)
         {
+
           if (files?.Count > 0)
           {
-            do
-            {
-              nextRandom = random.Next(files.Count);
-            } while (nextRandom == lastRandom);
 
             lastRandom = nextRandom;
 
             await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, async () =>
             {
+
+              Debug.WriteLine("Next slideshow image: " + files[nextRandom].Name + " Size: " + fileProperties.Size);
+              
               using (var stream = (FileRandomAccessStream)await files[nextRandom].OpenAsync(Windows.Storage.FileAccessMode.Read))
               {
                 var bitmapImage = new BitmapImage();
@@ -112,8 +115,17 @@ namespace KioskPhotoFrame
             files = await cache.GetFilesAsync();
 
             lastFileRefresh = DateTime.Now;
-            System.Diagnostics.Debug.WriteLine(lastFileRefresh.Subtract(start).TotalMilliseconds);
           }
+
+          // select the next image to load
+          do
+          {
+            nextRandom = random.Next(files.Count);
+
+            // ensure the file exists and that it is not 0 size (bad download, OneDrive Syncer will clean it up
+            fileProperties = await files[nextRandom].GetBasicPropertiesAsync();
+
+          } while (nextRandom == lastRandom || fileProperties?.Size == 0);
 
           // lastRandom will be -1 on startup
           if (lastRandom >= 0)
