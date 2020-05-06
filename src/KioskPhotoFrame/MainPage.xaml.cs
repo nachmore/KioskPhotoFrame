@@ -131,7 +131,11 @@ namespace KioskPhotoFrame
           if (lastRandom >= 0)
           {
             var elapsed = (int)(DateTime.Now.Subtract(start).TotalMilliseconds);
-            await Task.Delay(KioskConfig.SlideDurationSeconds * 1000 - elapsed).ConfigureAwait(false);
+            var remainingSleep = KioskConfig.SlideDurationSeconds * 1000 - elapsed;
+
+            // it is indeed possible for all the above to take more than the requested duration
+            if (remainingSleep > 0) 
+              await Task.Delay(remainingSleep).ConfigureAwait(false);
           }
         }
       });
