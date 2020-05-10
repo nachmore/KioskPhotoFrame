@@ -59,8 +59,6 @@ namespace SelectiveOneDriveSync
       while (!_stopSyncRequested)
       {
 
-        var start = DateTime.Now;
-
         // retrieve the file list
         var filesToSync = await ReadAllText(FileList);
 
@@ -83,12 +81,16 @@ namespace SelectiveOneDriveSync
           // will stomp on files with the same name in different directories. For now, "oh well"
           Debug.WriteLine($"Syncing {file}");
           await SyncFile(driveId, driveItemId, file);
+
+          if (_stopSyncRequested)
+            break;
         }
         
-        var timeToSleep = (int)(SyncInterval - DateTime.Now.Subtract(start).TotalMinutes);
-
-        if (timeToSleep > 0)
-          await Task.Delay(timeToSleep * 1000);
+        // it doesn't matter how long the above took, we should always sleep for SyncInterval
+        // after it completes (first run will likely take longer than SyncInterval, but there
+        // is no point in immediately rerunning, afterwhich we'll fall into our regular pattern 
+        // regardless)
+        await Task.Delay(SyncInterval * 60 * 1000);
       }
     }
 
