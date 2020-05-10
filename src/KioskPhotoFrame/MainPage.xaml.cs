@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Storage.FileProperties;
 using Windows.Storage.Streams;
@@ -24,8 +25,11 @@ namespace KioskPhotoFrame
   {
     public event PropertyChangedEventHandler PropertyChanged = delegate { };
 
-    private BitmapImage _slideShowSource;
-    public BitmapImage SlideShowSource
+    private BitmapSource _slideShowSource;
+    private DispatcherTimer _pictureTimer;
+    private StorageFile _nextImageFile;
+
+    public BitmapSource SlideShowSource
     {
       get { return _slideShowSource; }
       set
@@ -66,10 +70,15 @@ namespace KioskPhotoFrame
     {
       HorizontalImageStretch = KioskConfig.HorizontalImageStretch;
       VerticalImageStretch = KioskConfig.VerticalImageStretch;
-      
+
       var s = new SelectiveOneDriveSync.SelectiveOneDriveClient();
       s.StartSync();
-     
+
+      _pictureTimer = new DispatcherTimer();
+      _pictureTimer.Tick += _pictureTimer_Tick;
+      _pictureTimer.Interval = new TimeSpan(0, 0, KioskConfig.SlideDurationSeconds);
+      _pictureTimer.Start();
+
       Task.Run(async () =>
       {
         var cache = await s.GetCacheFolder();
@@ -84,25 +93,6 @@ namespace KioskPhotoFrame
         while (true)
         {
 
-          if (files?.Count > 0)
-          {
-
-            lastRandom = nextRandom;
-
-            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, async () =>
-            {
-
-              Debug.WriteLine("Next slideshow image: " + files[nextRandom].Name + " Size: " + fileProperties.Size);
-              
-              using (var stream = (FileRandomAccessStream)await files[nextRandom].OpenAsync(Windows.Storage.FileAccessMode.Read))
-              {
-                var bitmapImage = new BitmapImage();
-                bitmapImage.SetSource(stream);
-                SlideShowSource = bitmapImage;
-              }
-            });
-          }
-          
           // we refresh the image list after the image so that this effectively runs in the background
           // instead of delaying the transition of the next image
 
@@ -127,6 +117,8 @@ namespace KioskPhotoFrame
 
           } while (nextRandom == lastRandom || fileProperties?.Size == 0);
 
+          _nextImageFile = files[nextRandom];
+
           // lastRandom will be -1 on startup
           if (lastRandom >= 0)
           {
@@ -134,17 +126,46 @@ namespace KioskPhotoFrame
             var remainingSleep = KioskConfig.SlideDurationSeconds * 1000 - elapsed;
 
             // it is indeed possible for all the above to take more than the requested duration
-            if (remainingSleep > 0) 
+            if (remainingSleep > 0)
               await Task.Delay(remainingSleep).ConfigureAwait(false);
           }
+
+          lastRandom = nextRandom;
         }
       });
-      
+
       ApplicationView.GetForCurrentView().TryEnterFullScreenMode();
 
 #if !DEBUG
       Window.Current.CoreWindow.PointerCursor = null;
 #endif
+    }
+
+    private async void _pictureTimer_Tick(object sender, object e)
+    {
+
+      if (_nextImageFile != null)
+      {
+
+        Debug.WriteLine($"{DateTime.Now}: Next slideshow image: {_nextImageFile.Name}");
+
+        using (var stream = (FileRandomAccessStream)await _nextImageFile.OpenAsync(Windows.Storage.FileAccessMode.Read))
+        {
+          var image = new BitmapImage();
+
+          try
+          {
+            await image.SetSourceAsync(stream);
+            SlideShowSource = image;
+          }
+          catch (Exception exception)
+          {
+            // TODO: at some point we need better handling and tracking of exceptions...
+            Debug.WriteLine("EXCEPTION LOADING IMAGE: " + exception);
+          }
+
+        }
+      }
     }
 
     public void OnPropertyChanged([CallerMemberName] string propertyName = null)
