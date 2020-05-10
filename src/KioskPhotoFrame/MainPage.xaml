@@ -9,5 +9,14 @@
     mc:Ignorable="d"
     Background="Black">
 
+  
   <imgex:ImageEx x:Name="temp" Source="{Binding SlideShowSource}" VerticalImageStretch="{Binding VerticalImageStretch}" HorizontalImageStretch="{Binding HorizontalImageStretch}" ></imgex:ImageEx>
+  <!--
+    To debug hard to find issues in the main code, for example a memory leak in native, comment out the ImageEx 
+    control and use the below standard Image control. This will eliminate the animation control as a source of
+    problems (or identify it as the source!).
+  -->
+  <!--
+  <Image x:Name="temp" Source="{Binding SlideShowSource}" ></Image>
+  -->
 </Page>
