@@ -23,10 +23,11 @@
     <AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
     <GenerateTestArtifacts>True</GenerateTestArtifacts>
     <AppxBundle>Always</AppxBundle>
-    <AppxBundlePlatforms>x86</AppxBundlePlatforms>
+    <AppxBundlePlatforms>x64</AppxBundlePlatforms>
     <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
-    <PackageCertificateKeyFile>H:\code\oss\KioskPhotoFrame\src\KioskPhotoFrame\KioskPhotoFrame_TemporaryKey.pfx</PackageCertificateKeyFile>
-    <PackageCertificateThumbprint>89DA86EAFB296701F6D4873A9D27011299224D07</PackageCertificateThumbprint>
+    <PackageCertificateKeyFile>KioskPhotoFrame_TemporaryKey.pfx</PackageCertificateKeyFile>
+    <PackageCertificateThumbprint>
+    </PackageCertificateThumbprint>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
     <DebugSymbols>true</DebugSymbols>

@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Storage.FileProperties;
 using Windows.Storage.Streams;
@@ -13,6 +11,7 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
+using SelectiveOneDriveSync;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -23,11 +22,20 @@ namespace KioskPhotoFrame
   /// </summary>
   public sealed partial class MainPage : Page, INotifyPropertyChanged
   {
+    private const int _IMAGEFILE_QUEUE_SIZE = 6;
+
     public event PropertyChangedEventHandler PropertyChanged = delegate { };
 
     private BitmapSource _slideShowSource;
     private DispatcherTimer _pictureTimer;
-    private StorageFile _nextImageFile;
+
+    private StorageFile[] _nextImageFiles = new StorageFile[_IMAGEFILE_QUEUE_SIZE];
+    private int _nextImageIndex = 0;
+
+    private DateTime _lastFileRefresh;
+    private IReadOnlyList<StorageFile> _pictureFileList;
+
+    private SelectiveOneDriveClient _oneDriveClient;
 
     public BitmapSource SlideShowSource
     {
@@ -71,68 +79,15 @@ namespace KioskPhotoFrame
       HorizontalImageStretch = KioskConfig.HorizontalImageStretch;
       VerticalImageStretch = KioskConfig.VerticalImageStretch;
 
-      var s = new SelectiveOneDriveSync.SelectiveOneDriveClient();
-      s.StartSync();
+      _oneDriveClient = new SelectiveOneDriveClient();
+      _oneDriveClient.StartSync();
 
       _pictureTimer = new DispatcherTimer();
       _pictureTimer.Tick += _pictureTimer_Tick;
       _pictureTimer.Interval = new TimeSpan(0, 0, KioskConfig.SlideDurationSeconds);
       _pictureTimer.Start();
 
-      Task.Run(async () =>
-      {
-        var cache = await s.GetCacheFolder();
-        var random = new Random();
-        var lastRandom = -1;
-        var nextRandom = 0;
-
-        var lastFileRefresh = DateTime.MinValue;
-        IReadOnlyList<StorageFile> files = null;
-        BasicProperties fileProperties = null;
-
-        while (true)
-        {
-
-          // we refresh the image list after the image so that this effectively runs in the background
-          // instead of delaying the transition of the next image
-
-          var start = DateTime.Now;
-
-          // No point in thrashing the disk refreshing thousands of files every time we switch 
-          // though only do this if there is a decent number of photos
-          if (files?.Count < KioskConfig.MinRefreshCount || DateTime.Now.Subtract(lastFileRefresh).TotalMinutes > KioskConfig.FileListRefreshMinutes)
-          {
-            files = await cache.GetFilesAsync();
-
-            lastFileRefresh = DateTime.Now;
-          }
-
-          // select the next image to load
-          do
-          {
-            nextRandom = random.Next(files.Count);
-
-            // ensure the file exists and that it is not 0 size (bad download, OneDrive Syncer will clean it up
-            fileProperties = await files[nextRandom].GetBasicPropertiesAsync();
-
-          } while (nextRandom == lastRandom || fileProperties?.Size == 0);
-
-          _nextImageFile = files[nextRandom];
-
-          // lastRandom will be -1 on startup
-          if (lastRandom >= 0)
-          {
-            var elapsed = (int)(DateTime.Now.Subtract(start).TotalMilliseconds);
-            var remainingSleep = KioskConfig.SlideDurationSeconds * 1000 - elapsed;
-
-            // it is indeed possible for all the above to take more than the requested duration
-            if (remainingSleep > 0)
-              await Task.Delay(remainingSleep).ConfigureAwait(false);
-          }
-
-          lastRandom = nextRandom;
-        }
-      });
+      RefreshImageQueueAsync();
 
       ApplicationView.GetForCurrentView().TryEnterFullScreenMode();
 
@@ -141,15 +96,62 @@ namespace KioskPhotoFrame
 #endif
     }
 
-    private async void _pictureTimer_Tick(object sender, object e)
+    private async void RefreshImageQueueAsync()
     {
+      var cache = await _oneDriveClient.GetCacheFolder();
+      var random = new Random();
+      var lastRandom = -1;
+      var nextRandom = 0;
 
-      if (_nextImageFile != null)
+      BasicProperties fileProperties = null;
+
+
+      // we refresh the image list after the image so that this effectively runs in the background
+      // instead of delaying the transition of the next image
+
+      var start = DateTime.Now;
+
+      // No point in thrashing the disk refreshing thousands of files every time we switch 
+      // though only do this if there is a decent number of photos
+      if (_pictureFileList?.Count < KioskConfig.MinRefreshCount || DateTime.Now.Subtract(_lastFileRefresh).TotalMinutes > KioskConfig.FileListRefreshMinutes)
+      {
+        _pictureFileList = await cache.GetFilesAsync();
+
+        _lastFileRefresh = DateTime.Now;
+      }
+
+      // repopulate the image queue
+
+      for (int i = 0; i < _nextImageFiles.Length; i++)
       {
 
-        Debug.WriteLine($"{DateTime.Now}: Next slideshow image: {_nextImageFile.Name}");
+        do
+        {
+          nextRandom = random.Next(_pictureFileList.Count);
 
-        using (var stream = (FileRandomAccessStream)await _nextImageFile.OpenAsync(Windows.Storage.FileAccessMode.Read))
+          // ensure the file exists and that it is not 0 size (bad download, OneDrive Syncer will clean it up
+          fileProperties = await _pictureFileList[nextRandom].GetBasicPropertiesAsync();
+
+        } while (nextRandom == lastRandom || fileProperties?.Size == 0);
+
+        _nextImageFiles[i] = _pictureFileList[nextRandom];
+      }
+
+      _lastFileRefresh = DateTime.Now;
+    }
+
+    private async void _pictureTimer_Tick(object sender, object e)
+    {
+      var newImage = _nextImageFiles[_nextImageIndex];
+
+      if (newImage != null)
+      {
+        // increment the index (and rotate back to 0 when needed)
+        _nextImageIndex = (_nextImageIndex + 1) % _nextImageFiles.Length;
+
+        Debug.WriteLine($"{DateTime.Now}: Next slideshow image: {newImage.Name}");
+
+        using (var stream = (FileRandomAccessStream)await newImage.OpenAsync(Windows.Storage.FileAccessMode.Read))
         {
           var image = new BitmapImage();
 
@@ -165,6 +167,9 @@ namespace KioskPhotoFrame
           }
 
         }
+
+        if (_nextImageIndex == _nextImageFiles.Length / 2)
+          RefreshImageQueueAsync();
       }
     }
 

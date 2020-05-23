@@ -9,7 +9,7 @@
   <Identity
     Name="3689a1d0-179e-43f5-8b43-9fca8fa7c9f1"
     Publisher="CN=nachmore"
-    Version="1.0.3.0" />
+    Version="1.0.15.0" />
 
   <mp:PhoneIdentity PhoneProductId="3689a1d0-179e-43f5-8b43-9fca8fa7c9f1" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
