@@ -12,6 +12,8 @@ using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 using SelectiveOneDriveSync;
+using ImageMagick;
+using System.IO;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -101,29 +103,20 @@ namespace KioskPhotoFrame
       var cache = await _oneDriveClient.GetCacheFolder();
       var random = new Random();
       var lastRandom = -1;
-      var nextRandom = 0;
 
-      BasicProperties fileProperties = null;
-
-
-      // we refresh the image list after the image so that this effectively runs in the background
-      // instead of delaying the transition of the next image
-
-      var start = DateTime.Now;
-
-      // No point in thrashing the disk refreshing thousands of files every time we switch 
+      // No point in thrashing the disk refreshing thousands of files every time we switch, 
       // though only do this if there is a decent number of photos
       if (_pictureFileList?.Count < KioskConfig.MinRefreshCount || DateTime.Now.Subtract(_lastFileRefresh).TotalMinutes > KioskConfig.FileListRefreshMinutes)
       {
         _pictureFileList = await cache.GetFilesAsync();
-
         _lastFileRefresh = DateTime.Now;
       }
 
       // repopulate the image queue
-
       for (int i = 0; i < _nextImageFiles.Length; i++)
       {
+        int nextRandom;
+        BasicProperties fileProperties;
 
         do
         {
@@ -151,21 +144,46 @@ namespace KioskPhotoFrame
 
         Debug.WriteLine($"{DateTime.Now}: Next slideshow image: {newImage.Name}");
 
-        using (var stream = (FileRandomAccessStream)await newImage.OpenAsync(Windows.Storage.FileAccessMode.Read))
+        IRandomAccessStream fileStream = null;
+        MemoryStream memStream = null;
+
+        try
         {
+
+          // even with the paid for codecs from the Microsoft Store HEIC images do not always load
+          // so instead we use MagickImage to convert them to JPEG on the fly.
+          // TODO: Consider doing this as a one-time step when downloading the image to just write a jpeg
+          if (newImage.FileType == ".heic")
+          {
+            using (var magickImage = new MagickImage(newImage.Path))
+            {
+              magickImage.Format = MagickFormat.Jpeg;
+              memStream = new MemoryStream();
+
+              magickImage.Write(memStream);
+
+              fileStream = memStream.AsRandomAccessStream();
+              fileStream.Seek(0);
+            }
+          }
+          else
+          {
+            fileStream = (FileRandomAccessStream)await newImage.OpenAsync(Windows.Storage.FileAccessMode.Read);
+          }
+
           var image = new BitmapImage();
-
-          try
-          {
-            await image.SetSourceAsync(stream);
-            SlideShowSource = image;
-          }
-          catch (Exception exception)
-          {
-            // TODO: at some point we need better handling and tracking of exceptions...
-            Debug.WriteLine("EXCEPTION LOADING IMAGE: " + exception);
-          }
-
+          await image.SetSourceAsync(fileStream);
+          SlideShowSource = image;
+        }
+        catch (Exception exception)
+        {
+          // TODO: at some point we need better handling and tracking of exceptions...
+          Debug.WriteLine("EXCEPTION LOADING IMAGE: " + exception);
+        }
+        finally
+        {
+          fileStream?.Dispose();
+          memStream?.Dispose();
         }
 
         if (_nextImageIndex == _nextImageFiles.Length / 2)
