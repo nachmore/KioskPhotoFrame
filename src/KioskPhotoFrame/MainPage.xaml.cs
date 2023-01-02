@@ -109,6 +109,11 @@ namespace KioskPhotoFrame
       if (_pictureFileList?.Count < KioskConfig.MinRefreshCount || DateTime.Now.Subtract(_lastFileRefresh).TotalMinutes > KioskConfig.FileListRefreshMinutes)
       {
         _pictureFileList = await cache.GetFilesAsync();
+
+        // if we still don't have any pictures in the list, just return and we'll try again next tick
+        if (_pictureFileList.Count == 0)
+          return;
+
         _lastFileRefresh = DateTime.Now;
       }
 
