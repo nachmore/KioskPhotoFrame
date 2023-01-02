@@ -30,6 +30,34 @@ namespace KioskPhotoFrame
     {
       this.InitializeComponent();
       this.Suspending += OnSuspending;
+      this.UnhandledException += App_UnhandledException;
+    }
+
+    private void App_UnhandledException(object sender, Windows.UI.Xaml.UnhandledExceptionEventArgs e)
+    {
+      var documentsDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+
+      using (var sw = new StreamWriter(documentsDir + @"\KioskPhotoFrame.exceptions", true))
+      {
+        sw.WriteLine($"*********************************\n{DateTime.Now}");
+
+        var ex = e.Exception;
+        var count = 0;
+
+        while (ex != null)
+        {
+          sw.WriteLine($@"
+Exception {count}: {ex.GetType().FullName}
+  Message: {ex.Message}
+  Stack:
+{ex.StackTrace}
+");
+
+          ex = ex.InnerException;
+          count++;
+        }
+      }
+
     }
 
     /// <summary>
